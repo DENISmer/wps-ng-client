@@ -1,3 +1,7 @@
+# WpsNgClientNSC
+
+Взятый за основу https://github.com/52North/wps-ng-client приводится к рабочему состоянию и будет подточен под конкретные задачи.
+
 
 # WpsNgClient
 
