@@ -93,6 +93,18 @@ export class ExecutionComponent implements OnInit {
   }
 
   btn_onExecute() {
+    const geoJson = { "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]
+        ]
+      },
+      "properties": {
+        "prop0": "value0",
+        "prop1": 0.0
+      }
+    };
     this.dataService.setResponseError(undefined);
     this.dataService.setCurrentInput(undefined);
     this.dataService.setExecuteResponse(undefined);
@@ -105,7 +117,9 @@ export class ExecutionComponent implements OnInit {
     const generatedInputs = [];
     const generatedOutputs = [];
     // create inputs
+    this.addLayerOnMap('TEST',geoJson,false,'jobId');
     for (const input of this.processOffering.process.inputs) {
+      console.log(JSON.parse(this.unCDATAOutput(input.enteredValue)));
       if (input.literalData
         && input.literalData !== undefined
         && input.enteredValue
@@ -117,7 +131,10 @@ export class ExecutionComponent implements OnInit {
             undefined,
             undefined,
             input.enteredValue);
+        // this.addLayerOnMap('a',data,true,1);
+        console.log(input.literalData);
         generatedInputs.push(literalInput);
+        console.warn(literalInput);
       }
       if (input.boundingBoxData
         && input.boundingBoxData !== undefined

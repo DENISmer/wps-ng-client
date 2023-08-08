@@ -10,6 +10,11 @@ import { DataService } from './services/data.service';
 import { ProcessSpecificationComponent } from './process-specification/process-specification.component';
 import { HttpGetService } from './services/http-get.service';
 import { AppSettings } from './model/app-setting';
+import 'leaflet-geotiff-2';
+import "leaflet-geotiff-2/dist/leaflet-geotiff-rgb";
+import "leaflet-geotiff-2/dist/leaflet-geotiff-vector-arrows";
+import "leaflet-geotiff-2/dist/leaflet-geotiff-plotty";
+import GeoTIFF from 'geotiff';
 
 declare var WpsService: any;
 declare var InputGenerator: any;
@@ -21,7 +26,6 @@ declare var OutputGenerator: any;
     styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, AfterViewInit {
-
     constructor(translate: TranslateService, private dataService: DataService, private httpGetService: HttpGetService) {
         this.translationService = translate;
         this.dataService.processOffering$.subscribe(
@@ -86,10 +90,68 @@ export class AppComponent implements OnInit, AfterViewInit {
     @ViewChild(ConfigurationComponent, { static: true }) configuration: ConfigurationComponent;
     @ViewChild(ProcessSpecificationComponent, { static: true }) specification: ProcessSpecificationComponent;
     wpsSuccess = false;
+  renderer = L.LeafletGeotiff.rgb();
+  url = "./assets/wind_speed.tif";
+  option = {
+    // See renderer sections below.
+    // One of: L.LeafletGeotiff.rgb, L.LeafletGeotiff.plotty, L.LeafletGeotiff.vectorArrows
+    renderer: this.renderer,
+
+    // Use a worker thread for some initial compute (recommended for larger datasets)
+    useWorker: false,
+
+    // Optional array specifying the corners of the data, e.g. [[40.712216, -74.22655], [40.773941, -74.12544]].
+    // If omitted the image bounds will be read from the geoTIFF file (ModelTiepoint).
+    bounds: [],
+
+    // Optional geoTIFF band to read
+    band: 0,
+
+    // Optional geoTIFF image to read
+    image: 0,
+
+    // Optional clipping polygon, provided as an array of [lat,lon] coordinates.
+    // Note that this is the Leaflet [lat,lon] convention, not geoJSON [lon,lat].
+    clip: undefined,
+
+    // Optional leaflet pane to add the layer.
+    pane: "overlayPane",
+
+    // Optional callback to handle failed URL request or parsing of tif
+    onError: null,
+
+    // Optional, override default GeoTIFF function used to load source data
+    // Oneof: fromUrl, fromBlob, fromArrayBuffer
+    sourceFunction: GeoTIFF.fromUrl,
+
+    // Only required if sourceFunction is GeoTIFF.fromArrayBuffer
+    arrayBuffer: null,
+
+    // Optional nodata value (integer)
+    // (to be ignored by getValueAtLatLng)
+    noDataValue: undefined,
+
+    // Optional key to extract nodata value from GeoTIFFImage
+    // nested keys can be provided in dot notation, e.g. foo.bar.baz
+    // (to be ignored by getValueAtLatLng)
+    // this overrides noDataValue, the nodata value should be an integer
+    noDataKey: undefined,
+
+    // The block size to use for buffer
+    blockSize: 65536,
+
+    // Optional, override default opacity of 1 on the image added to the map
+    opacity: 1,
+
+    // Optional, hide imagery while map is moving (may prevent 'flickering' in some browsers)
+    clearBeforeMove: false,
+  };
+
+// create layer
+
 
     title = 'wps-ng-client';
     private settings: AppSettings;
-
     baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '...' });
     options = {
         zoom: environment.startZoom,
@@ -329,7 +391,30 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     onMapReady(map: L.Map) {
-        this.map = map;
+      const parse_georaster = require("georaster");
+      const GeoRasterLayer = require("georaster-layer-for-leaflet");
+      const url_to_geotiff_file = "../assets/BA_267_Cont1mGal_UTM18N_NAD83.tif";
+
+      fetch(url_to_geotiff_file)
+        .then(response => response.arrayBuffer())
+        .then(arrayBuffer => {
+          parse_georaster(arrayBuffer).then(georaster => {
+            console.log("georaster:", georaster);
+            const layer = new GeoRasterLayer({
+              georaster: georaster,
+              opacity: 0.9,
+              resolution: 265 // optional parameter for adjusting display resolution
+            });
+            layer.addTo(map);
+            this.addedLayers.push(layer);
+            this.map.fitBounds(layer.getBounds());
+            console.log(layer);
+            //this.addedLayers.push(layer);
+          });
+        });
+
+
+      this.map = map;
         this.allDrawnItems = L.featureGroup().addTo(this.map);
         this.drawOptions = {
             position: 'bottomright',
@@ -404,8 +489,8 @@ export class AppComponent implements OnInit, AfterViewInit {
         });
         this.LeafHighlightIcon = L.Icon.extend({
             options: {
-                iconUrl: './assets/marker-icon-blue.png',
-                shadowUrl: './assets/marker-shadow.png',
+                iconUrl: '../assets/marker-icon-blue.png',
+                shadowUrl: '../assets/marker-shadow.png',
                 iconSize: [31, 47],
                 shadowSize: [47, 47],
                 iconAnchor: [15, 47],
@@ -414,20 +499,20 @@ export class AppComponent implements OnInit, AfterViewInit {
             }
         });
         this.inputMarkerIcon = new this.LeafDefaultIcon({
-            iconUrl: './assets/marker-icon-blue.png',
-            shadowUrl: './assets/marker-shadow.png'
+            iconUrl: '../assets/marker-icon-blue.png',
+            shadowUrl: '../assets/marker-shadow.png'
         });
         this.inputMarkerHighlighIcon = new this.LeafHighlightIcon({
-            iconUrl: './assets/marker-icon-blue.png',
-            shadowUrl: './assets/marker-shadow.png'
+            iconUrl: '../assets/marker-icon-blue.png',
+            shadowUrl: '../assets/marker-shadow.png'
         });
         this.outputMarkerIcon = new this.LeafDefaultIcon({
-            iconUrl: './assets/marker-icon-red.png',
-            shadowUrl: './assets/marker-shadow.png'
+            iconUrl: '../assets/marker-icon-red.png',
+            shadowUrl: '../assets/marker-shadow.png'
         });
         this.outputMarkerHighlighIcon = new this.LeafHighlightIcon({
-            iconUrl: './assets/marker-icon-red.png',
-            shadowUrl: './assets/marker-shadow.png'
+            iconUrl: '../assets/marker-icon-red.png',
+            shadowUrl: '../assets/marker-shadow.png'
         });
     }
 
@@ -504,9 +589,9 @@ export class AppComponent implements OnInit, AfterViewInit {
         this.selectionDrawer['_enabled'] = false;
     }
 
-    // enablePolylineDrawer() {
-    //     this.polylineDrawer.enabled();
-    // }
+    enablePolylineDrawer() {
+        this.polylineDrawer.enabled();
+    }
 
     btn_drawPolyline = (input) => {
         const wasEnabled = this.polylineDrawer._enabled && this.currentInput === input;
@@ -684,11 +769,15 @@ export class AppComponent implements OnInit, AfterViewInit {
         this.layersControl.overlays['<b>JobID:</b> ' + jobId + '<br><b>Output:</b> ' + layerName] = addedWMSLayer;
     }
 
-    addLayerOnMap = (name, feature, isInput, jobId) => {
+  addLayerOnMap = (name, feature, isInput, jobId) => {
         if (this.showInfoControl) {
             console.log(this.info);
             this.info._div.style['display'] = 'block';
         }
+        const geotiffLayer = L.leafletGeotiff(this.url,this.option).addTo(this.map);
+
+
+
         const layerToAdd = L.geoJSON(
             feature, {
                 style: (feature) => {
@@ -848,6 +937,7 @@ export class AppComponent implements OnInit, AfterViewInit {
                 }
             }).addTo(this.map);
         this.addedLayers.push(layerToAdd);
+        this.addedLayers.push(geotiffLayer);
         if (isInput) {
             this.layersControl.overlays['<b>JobID:</b> ' + jobId + '<br><b>Input:</b> ' + name] = layerToAdd;
         } else {
